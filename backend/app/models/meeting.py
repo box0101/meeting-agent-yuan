@@ -19,7 +19,7 @@ class Meeting(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     audio_url: Mapped[str | None] = mapped_column(String(500))
-    status: Mapped[str] = mapped_column(String(50), default="pending")
+    status: Mapped[str] = mapped_column(String(50), default="awaiting_upload")
     # 转写模式：real(真实API) / mock(本地降级) / NULL(未转写)
     transcription_mode: Mapped[str | None] = mapped_column(String(20), default=None)
     start_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

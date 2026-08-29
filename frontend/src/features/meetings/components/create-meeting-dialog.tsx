@@ -121,7 +121,9 @@ export function CreateMeetingDialog({ open, onClose }: CreateMeetingDialogProps)
 
         {/* 音频上传 */}
         <div className="space-y-2">
-          <Label>录音文件</Label>
+          <Label>
+            录音文件 <span className="text-muted-foreground">（选填）</span>
+          </Label>
           <AudioUploader
             onFileSelect={setFile}
             selectedFile={file}

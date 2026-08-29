@@ -1,5 +1,10 @@
 // 会议状态
-export type MeetingStatus = 'pending' | 'transcribing' | 'processed' | 'failed'
+export type MeetingStatus =
+  | 'awaiting_upload' // 待上传录音（选填，尚未上传）
+  | 'pending' // 已上传，等待转写
+  | 'transcribing' // 转写中
+  | 'processed' // 已完成
+  | 'failed' // 失败
 
 // 会议
 export interface Meeting {

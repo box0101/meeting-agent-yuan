@@ -31,6 +31,7 @@ class MeetingService:
             participants=data.participants,
             start_time=data.start_time,
             end_time=data.end_time,
+            status="awaiting_upload",
         )
         db.add(meeting)
         await db.flush()

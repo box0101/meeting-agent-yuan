@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -17,19 +19,47 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { MeetingStatusBadge } from '../components/meeting-status-badge'
 import { TranscriptVirtualList } from '../components/transcript-virtual-list'
+import { AudioUploader } from '../components/audio-uploader'
 import { useMeeting, useTranscripts, useTranscriptionStatus, useDeleteMeeting } from '../hooks/use-meetings'
 import { useDecisions } from '../../decisions/hooks/use-decisions'
+import { uploadAudio } from '@/api/meetings'
+import { QUERY_KEYS } from '@/lib/constants'
 import { formatDateTime } from '@/lib/utils'
 
 export default function MeetingDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   const { data: meeting, isLoading: meetingLoading } = useMeeting(id)
   const { data: transcripts, isLoading: transcriptsLoading } = useTranscripts(id)
   const { data: transcriptionStatus } = useTranscriptionStatus(id)
   const deleteMeeting = useDeleteMeeting()
   const { data: decisions, isLoading: decisionsLoading } = useDecisions(0, 100, id)
+
+  // 详情页补传录音（录音为选填，未上传时仍可后续补充）
+  const [audioFile, setAudioFile] = useState<File | null>(null)
+  const [audioProgress, setAudioProgress] = useState(0)
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false)
+  const [audioError, setAudioError] = useState('')
+
+  const handleUploadAudio = async () => {
+    if (!meeting || !audioFile) return
+    setAudioError('')
+    setIsUploadingAudio(true)
+    try {
+      await uploadAudio(meeting.id, audioFile, (percent) => setAudioProgress(percent))
+      setAudioFile(null)
+      setAudioProgress(0)
+      // 刷新会议详情与转写状态，音频上传后会自动触发转写
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.meeting(meeting.id) })
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.transcriptionStatus(meeting.id) })
+    } catch (err) {
+      setAudioError(err instanceof Error ? err.message : '上传失败')
+    } finally {
+      setIsUploadingAudio(false)
+    }
+  }
 
   const isProcessing =
     transcriptionStatus?.status === 'transcribing' ||
@@ -101,13 +131,11 @@ export default function MeetingDetailPage() {
                     value={meeting.participants.join('、')}
                   />
                 )}
-                {meeting.audio_url && (
-                  <InfoItem
-                    icon={<FileAudio className="h-4 w-4" />}
-                    label="录音文件"
-                    value="已上传"
-                  />
-                )}
+                <InfoItem
+                  icon={<FileAudio className="h-4 w-4" />}
+                  label="录音文件"
+                  value={meeting.audio_url ? '已上传' : '未上传（选填）'}
+                />
               </div>
 
               {meeting.description && (
@@ -126,6 +154,31 @@ export default function MeetingDetailPage() {
                     />
                     您的浏览器不支持音频播放
                   </audio>
+                </div>
+              )}
+
+              {/* 未上传录音时提供补传入口，让「选填」真正可用，避免卡在 pending 死胡同 */}
+              {!meeting.audio_url && (
+                <div className="mt-4 rounded-md border border-dashed p-4">
+                  <p className="mb-3 text-sm font-medium">上传录音</p>
+                  <AudioUploader
+                    onFileSelect={setAudioFile}
+                    selectedFile={audioFile}
+                    uploadProgress={audioProgress}
+                    isUploading={isUploadingAudio}
+                  />
+                  <Button
+                    className="mt-3"
+                    onClick={handleUploadAudio}
+                    disabled={!audioFile || isUploadingAudio}
+                  >
+                    {isUploadingAudio
+                      ? `上传中 ${audioProgress}%`
+                      : '上传录音'}
+                  </Button>
+                  {audioError && (
+                    <p className="mt-2 text-sm text-destructive">{audioError}</p>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -172,14 +225,20 @@ export default function MeetingDetailPage() {
               {/* 转写中状态 */}
               {isProcessing && (
                 <div className="flex flex-col items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  {meeting.audio_url && (
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  )}
                   <p className="mt-3 text-sm font-medium">
-                    {transcriptionStatus?.status === 'pending'
-                      ? '等待转写...'
-                      : '正在转写音频...'}
+                    {transcriptionStatus?.status === 'pending' && !meeting.audio_url
+                      ? '尚未上传录音'
+                      : transcriptionStatus?.status === 'pending'
+                        ? '等待转写...'
+                        : '正在转写音频...'}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    转写完成后将自动显示结果
+                    {meeting.audio_url
+                      ? '转写完成后将自动显示结果'
+                      : '请在上方上传录音后自动开始转写'}
                   </p>
                 </div>
               )}
