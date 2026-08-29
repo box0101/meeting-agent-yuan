@@ -34,4 +34,4 @@ export const QUERY_KEYS = {
   decisionSearch: (query: string) => ['decision-search', query] as const,
 } as const
 
-export const APP_TITLE = 'Yuan-Meet · 评审决策 Agent'
+export const APP_TITLE = '评审决策 Agent'
