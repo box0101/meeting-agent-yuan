@@ -4,6 +4,7 @@ import type {
   Meeting,
   Transcript,
   MeetingStatus,
+  PaginatedResponse,
 } from '@/types'
 
 // 创建会议
@@ -17,14 +18,23 @@ export async function createMeeting(data: {
   return apiClient.post('meetings', { json: data }).json()
 }
 
-// 获取会议列表
+// 获取会议列表（分页 + 可选关键词/状态/日期过滤）
 export async function listMeetings(
   page = 1,
   pageSize = 20,
-): Promise<Meeting[]> {
+  q?: string,
+  status?: string,
+  startDate?: string,
+  endDate?: string,
+): Promise<PaginatedResponse<Meeting>> {
+  const searchParams: Record<string, string | number> = { page, page_size: pageSize }
+  if (q && q.trim()) searchParams.q = q.trim()
+  if (status) searchParams.status = status
+  if (startDate) searchParams.start_date = startDate
+  if (endDate) searchParams.end_date = endDate
   return apiClient
     .get('meetings', {
-      searchParams: { page, page_size: pageSize },
+      searchParams,
     })
     .json()
 }

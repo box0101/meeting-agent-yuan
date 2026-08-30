@@ -8,13 +8,13 @@ import { QUERY_KEYS } from '@/lib/constants'
 
 // 决策列表
 export function useDecisions(
-  skip = 0,
-  limit = 20,
+  page = 1,
+  pageSize = 20,
   meetingId?: string,
 ) {
   return useQuery({
-    queryKey: QUERY_KEYS.decisionList(skip, limit, meetingId),
-    queryFn: () => listDecisions(skip, limit, meetingId),
+    queryKey: QUERY_KEYS.decisionList(page, pageSize, meetingId),
+    queryFn: () => listDecisions(page, pageSize, meetingId),
   })
 }
 

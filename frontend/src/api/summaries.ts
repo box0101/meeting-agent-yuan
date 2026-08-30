@@ -5,16 +5,26 @@ import type {
   Risk,
   MeetingSummary,
   SummaryListItem,
+  PaginatedResponse,
 } from '@/types'
 
-// 获取所有纪要列表
+// 获取所有纪要列表（分页 + 可选关键词/状态/日期过滤）
 export async function listSummaries(
   page = 1,
   pageSize = 20,
-): Promise<SummaryListItem[]> {
+  q?: string,
+  status?: string,
+  startDate?: string,
+  endDate?: string,
+): Promise<PaginatedResponse<SummaryListItem>> {
+  const searchParams: Record<string, string | number> = { page, page_size: pageSize }
+  if (q && q.trim()) searchParams.q = q.trim()
+  if (status) searchParams.status = status
+  if (startDate) searchParams.start_date = startDate
+  if (endDate) searchParams.end_date = endDate
   return apiClient
     .get('summaries', {
-      searchParams: { page, page_size: pageSize },
+      searchParams,
     })
     .json()
 }

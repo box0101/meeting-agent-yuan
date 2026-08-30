@@ -357,14 +357,6 @@ export interface DecisionListItem {
   created_at: string
 }
 
-// 决策列表响应
-export interface DecisionListResponse {
-  items: DecisionListItem[]
-  total: number
-  skip: number
-  limit: number
-}
-
 // 决策搜索结果项
 export interface DecisionSearchResult {
   id: string

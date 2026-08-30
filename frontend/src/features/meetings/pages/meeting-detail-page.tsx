@@ -35,7 +35,7 @@ export default function MeetingDetailPage() {
   const { data: transcripts, isLoading: transcriptsLoading } = useTranscripts(id)
   const { data: transcriptionStatus } = useTranscriptionStatus(id)
   const deleteMeeting = useDeleteMeeting()
-  const { data: decisions, isLoading: decisionsLoading } = useDecisions(0, 100, id)
+  const { data: decisions, isLoading: decisionsLoading } = useDecisions(1, 100, id)
 
   // 详情页补传录音（录音为选填，未上传时仍可后续补充）
   const [audioFile, setAudioFile] = useState<File | null>(null)

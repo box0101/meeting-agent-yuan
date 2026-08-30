@@ -46,21 +46,32 @@ class MeetingService:
         return result.scalar_one_or_none()
 
     async def list_meetings(
-        self, db: AsyncSession, skip: int = 0, limit: int = 20
+        self, db: AsyncSession, skip: int = 0, limit: int = 20,
+        q: str | None = None, status: str | None = None,
+        start_date: str | None = None, end_date: str | None = None,
     ) -> tuple[list[Meeting], int]:
-        """获取会议列表 + 总数"""
-        # 列表
-        result = await db.execute(
-            select(Meeting)
-            .order_by(Meeting.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-        )
-        meetings = list(result.scalars().all())
+        """获取会议列表 + 总数，可选关键词/状态/日期过滤"""
+        base = select(Meeting)
+        if q:
+            pattern = f"%{q}%"
+            base = base.where(
+                (Meeting.title.ilike(pattern)) | (Meeting.description.ilike(pattern))
+            )
+        if status:
+            base = base.where(Meeting.status == status)
+        if start_date:
+            base = base.where(func.date(Meeting.created_at) >= start_date)
+        if end_date:
+            base = base.where(func.date(Meeting.created_at) <= end_date)
 
-        # 总数
-        count_result = await db.execute(select(func.count(Meeting.id)))
-        total = count_result.scalar_one()
+        rows_result = await db.execute(
+            base.order_by(Meeting.created_at.desc()).offset(skip).limit(limit)
+        )
+        meetings = list(rows_result.scalars().all())
+
+        total = (
+            await db.execute(base.with_only_columns(func.count(Meeting.id)))
+        ).scalar_one()
 
         return meetings, total
 

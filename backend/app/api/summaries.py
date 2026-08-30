@@ -25,26 +25,38 @@ global_router = APIRouter(prefix="/summaries", tags=["纪要管理"])
 router = APIRouter(prefix="/meetings/{meeting_id}", tags=["纪要管理"])
 
 
-@global_router.get("", response_model=list[SummaryListItemResponse])
+@global_router.get("")
 async def list_summaries(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    q: str | None = Query(None, description="关键词搜索（匹配纪要内容或会议标题）"),
+    status: str | None = Query(None, description="按状态过滤（completed/generating/failed）"),
+    start_date: str | None = Query(None, description="起始日期过滤（YYYY-MM-DD，按创建日期）"),
+    end_date: str | None = Query(None, description="结束日期过滤（YYYY-MM-DD，按创建日期）"),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取所有纪要列表"""
+    """获取所有纪要列表（分页 + 可选关键词/状态/日期过滤）"""
     skip = (page - 1) * page_size
-    rows, _ = await summary_service.list_summaries(db, skip=skip, limit=page_size)
-    return [
-        SummaryListItemResponse(
-            id=str(s.id),
-            meeting_id=str(s.meeting_id),
-            meeting_title=m.title,
-            content=s.content[:200] if s.content else "",
-            status=s.status,
-            created_at=s.created_at,
-        )
-        for s, m in rows
-    ]
+    rows, total = await summary_service.list_summaries(
+        db, skip=skip, limit=page_size, q=q, status=status,
+        start_date=start_date, end_date=end_date,
+    )
+    return {
+        "items": [
+            SummaryListItemResponse(
+                id=str(s.id),
+                meeting_id=str(s.meeting_id),
+                meeting_title=m.title,
+                content=s.content[:200] if s.content else "",
+                status=s.status,
+                created_at=s.created_at,
+            )
+            for s, m in rows
+        ],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
 
 
 @router.post("/summarize", response_model=SummaryResponse, status_code=200)

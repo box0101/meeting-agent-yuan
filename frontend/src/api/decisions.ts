@@ -1,21 +1,22 @@
 import { apiClient } from './client'
 import type {
-  DecisionListResponse,
+  DecisionListItem,
   DecisionDetail,
   DecisionSearchResponse,
+  PaginatedResponse,
 } from '@/types'
 
 // 决策列表（分页 + 可选按 meeting 筛选）
 export async function listDecisions(
-  skip = 0,
-  limit = 20,
+  page = 1,
+  pageSize = 20,
   meetingId?: string,
-): Promise<DecisionListResponse> {
+): Promise<PaginatedResponse<DecisionListItem>> {
   return apiClient
     .get('decisions', {
       searchParams: meetingId
-        ? { skip, limit, meeting_id: meetingId }
-        : { skip, limit },
+        ? { page, page_size: pageSize, meeting_id: meetingId }
+        : { page, page_size: pageSize },
     })
     .json()
 }

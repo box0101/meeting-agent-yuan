@@ -18,19 +18,20 @@ router = APIRouter(prefix="/decisions", tags=["decisions"])
 @router.get("")
 async def list_decisions(
     meeting_id: uuid.UUID | None = None,
-    skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
     """决策列表（分页 + 按 meeting 筛选）
 
     Args:
         meeting_id: 按会议筛选（可选）
-        skip: 分页偏移
-        limit: 每页数量（1~100）
+        page: 页码（从 1 开始）
+        page_size: 每页数量（1~100）
     """
+    skip = (page - 1) * page_size
     decisions, total = await decision_graph_service.list_decisions(
-        db, meeting_id=meeting_id, skip=skip, limit=limit
+        db, meeting_id=meeting_id, skip=skip, limit=page_size
     )
     return {
         "items": [
@@ -46,8 +47,8 @@ async def list_decisions(
             for d in decisions
         ],
         "total": total,
-        "skip": skip,
-        "limit": limit,
+        "page": page,
+        "page_size": page_size,
     }
 
 

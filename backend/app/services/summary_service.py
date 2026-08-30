@@ -27,21 +27,32 @@ class SummaryService:
     """纪要生成与管理"""
 
     async def list_summaries(
-        self, db: AsyncSession, skip: int = 0, limit: int = 20
+        self, db: AsyncSession, skip: int = 0, limit: int = 20,
+        q: str | None = None, status: str | None = None,
+        start_date: str | None = None, end_date: str | None = None,
     ) -> tuple[list[tuple[Summary, Meeting]], int]:
-        """获取所有纪要列表（附带会议信息）"""
-        result = await db.execute(
-            select(Summary, Meeting)
-            .join(Meeting, Summary.meeting_id == Meeting.id)
-            .order_by(Summary.created_at.desc())
-            .offset(skip)
-            .limit(limit)
+        """获取所有纪要列表（附带会议信息），可选关键词/状态/日期过滤"""
+        base = select(Summary, Meeting).join(Meeting, Summary.meeting_id == Meeting.id)
+        if q:
+            pattern = f"%{q}%"
+            base = base.where(
+                (Summary.content.ilike(pattern)) | (Meeting.title.ilike(pattern))
+            )
+        if status:
+            base = base.where(Summary.status == status)
+        if start_date:
+            base = base.where(func.date(Summary.created_at) >= start_date)
+        if end_date:
+            base = base.where(func.date(Summary.created_at) <= end_date)
+
+        rows_result = await db.execute(
+            base.order_by(Summary.created_at.desc()).offset(skip).limit(limit)
         )
-        rows = list(result.all())
+        rows = list(rows_result.all())
 
-        count_result = await db.execute(select(func.count(Summary.id)))
-        total = count_result.scalar_one()
-
+        total = (
+            await db.execute(base.with_only_columns(func.count(Summary.id)))
+        ).scalar_one()
         return rows, total
 
     async def _build_transcript_text(

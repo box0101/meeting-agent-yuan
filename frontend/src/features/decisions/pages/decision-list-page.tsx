@@ -11,15 +11,25 @@ import { useDecisions, useSearchDecisions } from '../hooks/use-decisions'
 import { formatDateTime } from '@/lib/utils'
 import type { DecisionListItem, DecisionSearchResult } from '@/types'
 
+const PAGE_SIZE_OPTIONS = [20, 50, 100]
+
 export default function DecisionListPage() {
   const [query, setQuery] = useState('')
   const [searchKey, setSearchKey] = useState('')
-  const [page, setPage] = useState(0)
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const location = useLocation()
-  const pageSize = 20
   const meetingIdFromUrl = searchParams.get('meetingId')
+  const page = Math.max(0, Number(searchParams.get('page')) || 0)
+  const rawPageSize = Number(searchParams.get('pageSize'))
+  const pageSize = PAGE_SIZE_OPTIONS.includes(rawPageSize) ? rawPageSize : 20
+
+  const updateParams = (next: { page?: number; pageSize?: number }) => {
+    const params = new URLSearchParams(searchParams)
+    if (next.page !== undefined) params.set('page', String(next.page))
+    if (next.pageSize !== undefined) params.set('pageSize', String(next.pageSize))
+    setSearchParams(params)
+  }
 
   // 从 location.state 恢复搜索状态（从详情页返回时）
   useEffect(() => {
@@ -27,12 +37,12 @@ export default function DecisionListPage() {
     if (state?.searchKey) {
       setSearchKey(state.searchKey)
       setQuery(state.searchKey)
-      setPage(state.page || 0)
+      updateParams({ page: state.page || 0 })
     }
   }, [location.state])
 
   const { data: listData, isLoading } = useDecisions(
-    page * pageSize,
+    page + 1,
     pageSize,
     meetingIdFromUrl || undefined,
   )
@@ -47,7 +57,7 @@ export default function DecisionListPage() {
 
   const handleSearch = () => {
     setSearchKey(query.trim())
-    setPage(0) // 搜索时重置页码
+    updateParams({ page: 0 }) // 搜索时重置页码
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -88,7 +98,7 @@ export default function DecisionListPage() {
             onClick={() => {
               setQuery('')
               setSearchKey('')
-              setPage(0)
+              updateParams({ page: 0 })
             }}
           >
             清除
@@ -175,7 +185,8 @@ export default function DecisionListPage() {
               currentPage={page}
               totalCount={listData.total}
               pageSize={pageSize}
-              onPageChange={setPage}
+              onPageChange={(p) => updateParams({ page: p })}
+              onPageSizeChange={(size) => updateParams({ page: 0, pageSize: size })}
             />
           )}
         </>

@@ -9,7 +9,7 @@ export const QUERY_KEYS = {
   transcriptionStatus: (meetingId: string) => ['transcription-status', meetingId] as const,
   // summaries
   summaries: 'summaries',
-  summaryList: (page: number, pageSize: number) => ['summary-list', page, pageSize] as const,
+  summaryList: (page: number, pageSize: number, q?: string, status?: string, startDate?: string, endDate?: string) => ['summary-list', page, pageSize, q, status, startDate, endDate] as const,
   meetingSummary: (meetingId: string) => ['meeting-summary', meetingId] as const,
   summaryDetail: (meetingId: string) => ['summary-detail', meetingId] as const,
   actionItems: (meetingId: string) => ['action-items', meetingId] as const,
@@ -28,8 +28,8 @@ export const QUERY_KEYS = {
   tools: 'tools',
   // decisions
   decisions: 'decisions',
-  decisionList: (skip: number, limit: number, meetingId?: string) =>
-    ['decision-list', skip, limit, meetingId] as const,
+  decisionList: (page: number, pageSize: number, meetingId?: string) =>
+    ['decision-list', page, pageSize, meetingId] as const,
   decision: (id: string) => ['decision', id] as const,
   decisionSearch: (query: string) => ['decision-search', query] as const,
 } as const

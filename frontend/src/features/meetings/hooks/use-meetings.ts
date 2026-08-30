@@ -15,10 +15,17 @@ import {
 import { QUERY_KEYS } from '@/lib/constants'
 
 // 会议列表
-export function useMeetings(page = 1, pageSize = 20) {
+export function useMeetings(
+  page = 1,
+  pageSize = 20,
+  q?: string,
+  status?: string,
+  startDate?: string,
+  endDate?: string,
+) {
   return useQuery({
-    queryKey: [QUERY_KEYS.meetings, page, pageSize],
-    queryFn: () => listMeetings(page, pageSize),
+    queryKey: [QUERY_KEYS.meetings, page, pageSize, q, status, startDate, endDate],
+    queryFn: () => listMeetings(page, pageSize, q, status, startDate, endDate),
   })
 }
 

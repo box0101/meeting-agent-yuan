@@ -15,10 +15,17 @@ import {
 import { QUERY_KEYS } from '@/lib/constants'
 
 // 纪要列表
-export function useSummaries(page = 1, pageSize = 20) {
+export function useSummaries(
+  page = 1,
+  pageSize = 20,
+  q?: string,
+  status?: string,
+  startDate?: string,
+  endDate?: string,
+) {
   return useQuery({
-    queryKey: QUERY_KEYS.summaryList(page, pageSize),
-    queryFn: () => listSummaries(page, pageSize),
+    queryKey: QUERY_KEYS.summaryList(page, pageSize, q, status, startDate, endDate),
+    queryFn: () => listSummaries(page, pageSize, q, status, startDate, endDate),
   })
 }
 
