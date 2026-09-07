@@ -138,12 +138,16 @@ def harness_wrap(
                         )
                         return {
                             output_field: raw_output,  # 保留原始输出兜底
-                            # 中间校验失败交给图中的 Output Validator 回灌；
-                            # 不写入只增不减的 errors，避免修正成功后仍判整次运行失败。
-                            "validation_failed": True,
+                            # 图层只消费 Harness 的校验结果并负责回灌路由。
+                            "validation_results": {
+                                name: {"ok": False, "reason": msg},
+                            },
                         }
                     # 用校验后的数据替换
                     result[output_field] = cleaned
+                    result["validation_results"] = {
+                        name: {"ok": True, "reason": None},
+                    }
 
             # 记录 step 成功（Token 已由 _invoke_with_retry 累计到 budget）
             # 把 budget 当前累计值同步到 AgentRun 数据库（持久化）

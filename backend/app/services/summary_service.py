@@ -186,6 +186,7 @@ class SummaryService:
             "valid": False,
             "retry_node": None,
             "retry_reason": None,
+            "validation_results": {},
             "paused": False,
             "approved": False,
             "review_status": None,

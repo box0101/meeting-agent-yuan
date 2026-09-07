@@ -5,7 +5,7 @@
 升级点：
 1. 引入 Planner 节点：分析会议类型/敏感度，动态调度 Agent
 2. 套 Harness 约束：Budget / Retry / Breaker / Validator
-3. Output Validator 节点：结构化校验 + 回灌重试
+3. Output Validator 节点：消费 Harness 校验结果 + 回灌重试
 4. Human Review 节点：高风险会议人工审批
 5. AgentRun 生命周期：节点耗时/Token/成本/Tool 调用记录
 
@@ -75,6 +75,8 @@ class MeetingAgentStateV2(TypedDict):
     valid: bool
     retry_node: Optional[str]
     retry_reason: Optional[str]
+    # 各 Harness 节点的校验结果；并行分支按节点名合并。
+    validation_results: Annotated[dict[str, dict], operator.or_]
     paused: bool
     approved: bool
     review_status: Optional[str]
@@ -83,7 +85,6 @@ class MeetingAgentStateV2(TypedDict):
     review_risks_count: int
     review_action_items_count: int
     budget_exceeded: bool
-    validation_failed: bool
     transcript_compressed_text: str
     # 评审决策抽取（Q8 决策：新增并行节点）
     decisions: list[dict]
