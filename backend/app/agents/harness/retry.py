@@ -97,8 +97,8 @@ async def with_smart_retry(
                 # 未知错误不重试，直接抛出避免掩盖真实问题
                 raise
 
-        # 不可重试错误：立即抛出
-        if err_type in NON_RETRYABLE:
+        # 只有明确列入白名单的瞬时错误才重试。认证、参数及未知错误均立即抛出。
+        if err_type not in RETRYABLE:
             raise last_error
 
         # 已达最大重试次数

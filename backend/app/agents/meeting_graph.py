@@ -20,6 +20,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.graph import StateGraph, END
 
 from app.config import settings
+from app.agents.harness.retry import with_smart_retry
 
 logger = logging.getLogger(__name__)
 
@@ -70,35 +71,31 @@ def _extract_json(text: str) -> list | dict | None:
 async def _invoke_with_retry(
     llm: ChatOpenAI, messages: list, max_retries: int = 2
 ) -> tuple[Optional[str], Optional[str]]:
-    """带重试的 LLM 调用
+    """带错误分类和指数退避的 LLM 调用
 
-    处理瞬时错误（网络、限流）。
+    只重试超时、限流、连接失败和服务端错误；其他错误立即失败。
     返回 (content, error_msg)，成功时 error_msg=None，失败时 content=None。
 
     成功时顺便把 token usage 累计到 BudgetGuard（如果上下文中有）。
     """
-    last_error: Exception | None = None
-    for attempt in range(max_retries + 1):
-        try:
-            response = await llm.ainvoke(messages)
-            # 累计 Token 到 BudgetGuard（harness 上下文，无则跳过）
-            await _try_consume_budget(llm, response)
-            return response.content, None
-        except Exception as e:
-            # BudgetExceededError 不重试，直接上抛（预算超限应立即终止）
-            from app.agents.harness.budget import BudgetExceededError
-            if isinstance(e, BudgetExceededError):
-                raise
-            last_error = e
-            # 仅最后一次记录 error 级别，中间重试用 debug 避免日志噪音
-            if attempt < max_retries:
-                logger.debug(
-                    f"LLM 调用失败 (attempt {attempt + 1}/{max_retries + 1}): {e}"
-                )
-            else:
-                logger.error(f"LLM 调用最终失败（重试 {max_retries} 次后）: {e}")
-    # 全部失败，返回分类后的友好错误信息
-    return None, _classify_llm_error(last_error) if last_error else "LLM 调用失败"
+    try:
+        response = await with_smart_retry(
+            llm.ainvoke,
+            messages,
+            max_retries=max_retries,
+            base_delay=1.0,
+            max_delay=10.0,
+            timeout=15.0,
+        )
+        # 累计 Token 到 BudgetGuard（harness 上下文，无则跳过）
+        await _try_consume_budget(llm, response)
+        return response.content, None
+    except Exception as e:
+        # BudgetExceededError 不应转换为普通结果，由 harness_wrap 专门处理。
+        from app.agents.harness.budget import BudgetExceededError
+        if isinstance(e, BudgetExceededError):
+            raise
+        return None, _classify_llm_error(e)
 
 
 async def _try_consume_budget(llm: ChatOpenAI, response) -> None:
