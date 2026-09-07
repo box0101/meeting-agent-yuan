@@ -138,7 +138,8 @@ def harness_wrap(
                         )
                         return {
                             output_field: raw_output,  # 保留原始输出兜底
-                            "errors": [f"{name} 输出校验失败: {msg}"],
+                            # 中间校验失败交给图中的 Output Validator 回灌；
+                            # 不写入只增不减的 errors，避免修正成功后仍判整次运行失败。
                             "validation_failed": True,
                         }
                     # 用校验后的数据替换

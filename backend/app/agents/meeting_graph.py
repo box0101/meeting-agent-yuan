@@ -247,12 +247,38 @@ RISKS_SYSTEM_PROMPT = """你是一位会议风险识别助手。
 """
 
 
+def _build_agent_human_message(
+    state: dict,
+    node_name: str,
+    output_field: str,
+) -> HumanMessage:
+    """构建 Agent 输入；回灌重试时附带上次输出和校验失败原因。"""
+    content = (
+        f"会议标题：{state['meeting_title']}\n\n"
+        f"转写文本：\n{state['transcript_text']}"
+    )
+
+    retry_reason = state.get("retry_reason")
+    if state.get("retry_node") == node_name and retry_reason:
+        previous_output = state.get(output_field)
+        if isinstance(previous_output, (list, dict)):
+            previous_output = json.dumps(previous_output, ensure_ascii=False)
+        content += (
+            "\n\n这是一次输出修正任务。"
+            f"\n上一次输出：\n{previous_output}"
+            f"\n\n校验失败原因：\n{retry_reason}"
+            "\n\n请针对上述原因修正输出，并严格遵守系统消息规定的格式。"
+        )
+
+    return HumanMessage(content=content)
+
+
 async def summary_agent(state: MeetingAgentState) -> dict:
     """摘要 Agent：生成 Markdown 纪要"""
     llm = get_llm()
     messages = [
         SystemMessage(content=SUMMARY_SYSTEM_PROMPT),
-        HumanMessage(content=f"会议标题：{state['meeting_title']}\n\n转写文本：\n{state['transcript_text']}"),
+        _build_agent_human_message(state, "summary_agent", "summary"),
     ]
     try:
         content, error_msg = await _invoke_with_retry(llm, messages)
@@ -280,7 +306,7 @@ async def action_items_agent(state: MeetingAgentState) -> dict:
     llm = get_llm()
     messages = [
         SystemMessage(content=ACTION_ITEMS_SYSTEM_PROMPT),
-        HumanMessage(content=f"会议标题：{state['meeting_title']}\n\n转写文本：\n{state['transcript_text']}"),
+        _build_agent_human_message(state, "action_items_agent", "action_items"),
     ]
     try:
         content, error_msg = await _invoke_with_retry(llm, messages)
@@ -290,7 +316,8 @@ async def action_items_agent(state: MeetingAgentState) -> dict:
         items = _extract_json(content)
         if not isinstance(items, list):
             logger.warning(f"行动项解析失败，原始响应: {content[:200]}")
-            items = []
+            # 保留原始输出，让 Output Validator 生成失败原因并触发回灌重试。
+            return {"action_items": content}
         return {"action_items": items}
     except Exception as e:
         logger.error(f"行动项 Agent 失败: {e}")
@@ -302,7 +329,7 @@ async def risks_agent(state: MeetingAgentState) -> dict:
     llm = get_llm()
     messages = [
         SystemMessage(content=RISKS_SYSTEM_PROMPT),
-        HumanMessage(content=f"会议标题：{state['meeting_title']}\n\n转写文本：\n{state['transcript_text']}"),
+        _build_agent_human_message(state, "risks_agent", "risks"),
     ]
     try:
         content, error_msg = await _invoke_with_retry(llm, messages)
@@ -312,7 +339,8 @@ async def risks_agent(state: MeetingAgentState) -> dict:
         risks = _extract_json(content)
         if not isinstance(risks, list):
             logger.warning(f"风险解析失败，原始响应: {content[:200]}")
-            risks = []
+            # 保留原始输出，让 Output Validator 生成失败原因并触发回灌重试。
+            return {"risks": content}
         return {"risks": risks}
     except Exception as e:
         logger.error(f"风险 Agent 失败: {e}")

@@ -65,10 +65,21 @@ async def output_validator_node(state: dict) -> dict:
         errors.append(f"{node_name} 输出校验失败（重试耗尽）: {msg}")
 
     if errors:
-        # 显式清掉 retry_node，防止 router 误判为还要重试
-        return {"valid": False, "errors": errors, "retry_node": None}
+        # 显式清掉回灌信号，防止 router 误判为还要重试。
+        return {
+            "valid": False,
+            "errors": errors,
+            "retry_node": None,
+            "retry_reason": None,
+        }
 
-    return {"valid": True, "retry_node": None, **cleaned_updates}
+    return {
+        "valid": True,
+        "retry_node": None,
+        "retry_reason": None,
+        "validation_failed": False,
+        **cleaned_updates,
+    }
 
 
 def _should_run_node(node_name: str, plan: dict) -> bool:
